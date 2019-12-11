@@ -4,7 +4,9 @@ author: "Chuning Yuan"
 date: "2019/12/5"
 output: pdf_document
 ---
+
 # I.Introduction 
+
 Nowadays, Airbnb has became very popular for the travelers due to its unique style and creative design and competitive prices and location than the hotels. Therefore I think it will be interesting to explore the data set of Airbnb, we can look at how are the price for a night stay for each room were affected by other variables such as reviews, number of bedrooms, minimum stays etc.This project will contain analysis on Airbnb data with EDA(Exploratory Data Analysis) and modeling. From this project,we will be able to have a general idea how to predict the price of rooms on Airbnb website and what’s the most influential factor in predicting process.
 
 Airbnb is a privately held global company headquartered in San Francisco that operates an online marketplace and hospitality service which is accessible via its websites and mobile apps. Members can us the service to arrange or offer lodging, primarily homestays, or tourism experiences. I choose the data of San Francisco is also because it is where Airbnb has grown around the world from, and I have the experience of searching Airbnb in bay area. First, I will read in the data and do some visualization to see which predictor will contributes more to the prediction of price. And then the modeling will be multi-level regression using room type and neighborhood  and few other factors to predict the price.
@@ -30,13 +32,16 @@ for(i in 2:length(files)){
 ```
 
 # II. Data 
-## Data source: 
+
+## Data source
+
 The data set was extracted from the tomslee.net website-- Airbnb Data Collection: Get the Data. There are zip file for many cities around the world. The zip file holds one or more csv files. Each csv file represents a single “survey” or “scrape” of the Airbnb web site for that city. 
 
-Specifically, the data used for this project was collected from the November 2013 to January 2017 in San Francisco. There are 9 variales that will be used in this project. Specifically, they are room id, host id, room type, neighborhood, number of reviews, overall satisfaction, number of accommodates, number of bedrooms and price.We are assuming the potential factors to influence the pricing are the room type, neighborhood, number of reviews, overall satisfaction, number of accommodates and number of bedrooms.
+Specifically, the data used for this project was collected from the November 2013 to January 2017 in San Francisco. There are 9 variables that will be used in this project. Specifically, they are room id, host id, room type, neighborhood, number of reviews, overall satisfaction, number of accommodates, number of bedrooms and price.We are assuming the potential factors to influence the pricing are the room type, neighborhood, number of reviews, overall satisfaction, number of accommodates and number of bedrooms.
  
 ## Data Cleaning 
-For a large dataset, we want to extract the information as more useful and informative as possible, so we filter the observation with more than 100 reviews because these could be more representative in general, and extract neighborhood with more than 30 obervations for the futher modeling analysis. Below is the data overview after the cleaning processes.
+
+For a large dataset, we want to extract the information as more useful and informative as possible, so we filter the observation with more than 100 reviews because these could be more representative in general, and extract neighborhood with more than 30 observations for the further modeling analysis. Below is the data overview after the cleaning processes.
 
 ```{r echo=FALSE}
 # filter observations with more than 100 reviews 
@@ -52,15 +57,18 @@ data = read.csv("san_francisco_data_final.csv")
 
 ```
 
-## Overview of data: 
-Table 1. The head of the data:
+## Overview of data
+
+### Table 1. The head of the data:
+
 ```{r echo=FALSE}
 
 kable(head(data[,c(2:4,6:8,11)]))
 ```
 
 
-Table 2. Summary of the data:
+### Table 2. Summary of the data:
+
 ```{r echo=FALSE}
 Airbnb = data[,c(2:12)]
 summary(Airbnb)
@@ -82,15 +90,21 @@ df <- SFAirbnb %>% mutate(logprice = log(price))
 #The distribution plot of transformed price  
 ggplot(df, aes(log(price)))+ geom_histogram(binwidth = 0.2, color = "black", fill = "pink")+ ggtitle("Figure 2.Distribution of room price") + ylab ("frequency of transformedprice") + xlab("log(Price)")+ xlim(3,7)
 ```
-Distribution of the room price:
 
-*First, we want to take a look at the room price distribution, and it is obvious that the most popular price are around 100, and between 100-150.*
+
+
+## What is the price range for SF Airbnb, what would be a common price we should expect when we are searching the Airbnb in SF?
+
+*We take a look at the room price distribution, and it is obvious that the most popular price are around 100, and between 100-150.*
 
 
 ```{r echo=FALSE,warning=FALSE}
 ggplot(SFAirbnb, aes(reviews))+ geom_histogram(binwidth = 5,color = "black", fill = "pink")+ ggtitle("Figure 3.distribution of number of reviews") + ylab ("frequency of reviews") + xlab("number of reviews")+ xlim(100,250)
 ```
-Distribution of number of reviews:
+
+
+
+## How many reivew would be a common amount we should expect when we are searching the Airbnb in SF?
 
 *Since we have already filter the reviews that is less than 100, here the distribution plot can tell us that most of the reviews are around 100 to 175,most of the reivews are ubder 200. This provide us some general ideas of number of reivews for the San Francisco Airbnb, so we can know how much reviews to expect when we are choosing the Airbnb from the website based on the reivews.*
 
@@ -98,7 +112,10 @@ Distribution of number of reviews:
 ```{r echo=FALSE}
 ggplot(SFAirbnb, aes(overall_satisfaction))+ geom_histogram(binwidth = 0.25, color = "black", fill = "pink")+ ggtitle("Figure 4.distribution of overall satisfaction") + ylab ("frequency of overall satisfaction") + xlab("overall_satisfaction")
 ```
-Distribution of overall satisfaction:
+
+
+
+## How are the Airbnb rated in SF Airbnb, is there any extreme good or bad rating we should be aware of?
 
 *In this histgram plot, most of overall rating is aroud 4.5 and 5. There are also a small portion of people rate the room 3.9  to 4 star. Overall, customers are satisfied with most of rooms in San Francisco area.*
 
@@ -124,7 +141,10 @@ ggplot(data=neighborhood, aes(x=reorder(neighborhood,-Avg_price), y= Avg_price))
 
 
 ```
-Pricing, reviews and average rating with different neighborhood:
+
+
+
+## How are the number of reviews, price and rating different in each neighborhood?
 
 *From this plot, the Potrero Hill area has the highest number of review (over 200), while Excelsior has the lowest average number of reviews beside those less than 100 reviews. We can observe that the average number of review do vary a lot by neighborhood. Although there is not much  diffence of rating among different neighborhood, still the neighborhood of the Airbnb room could be an influence predictor based on figure 6. We need to include this predictor in the model to see whether rating is a significant for predicting price of rooms.*
 
@@ -132,14 +152,16 @@ Pricing, reviews and average rating with different neighborhood:
 ```{r echo=FALSE}
 room_type <- sqldf("SELECT room_type, count(room_id), Avg(overall_satisfaction), avg(price) FROM SFAirbnb Group by 1")
 colnames(room_type) = c("room_type","Num_room", "Avg_rating","Avg_price")
-ggplot(data = room_type, aes(x= reorder(room_type,-Avg_price),y = Avg_price,fill = room_type)) + geom_bar(stat = "identity", ) + ggtitle("Figure 8.Average price with different room types") + ylab("Average_price")+ xlab("Room_type") 
+ggplot(data = room_type, aes(x= reorder(room_type,-Avg_price),y = Avg_price,fill = room_type)) + geom_bar(stat = "identity", ) + ggtitle("Figure 8.Average price for different room types") + ylab("Average_price")+ xlab("Room_type") 
 ```
 
-Average rating and price with different room types:
+## What the Average price for different room types:
 
-*This result is consistent with our common sense and meaning the pricing of Airbnb in San Francisco are reasonable as the bigger the room type has the higher average price. *
 
-Testing other predictors
+*This result is consistent with our common sense and meaning the pricing of Airbnb in San Francisco are reasonable as the bigger the room type has the higher average price.*
+
+## Testing other predictors
+
 
 *The accommodates and bedrooms could be two correlated terms in the model, because the number of bedroom will limit the number of customers served. So the correlation test will be conducted in next step.*
 
@@ -153,6 +175,7 @@ res
 # IV. Modelling: 
 
 ## Model1: Simple linear regression: 
+
 $$log(price) =  \alpha + \beta_1 x_{room type} +\beta_2 x_{reviews} + \beta_3x_{rating} +\beta_4x_{accommodates*bedrooms} + \beta_5 x_{accommodates}+\beta_6 x_{bedrooms} $$
 ```{r echo=FALSE}
 #model1 simple linear regression:
@@ -161,67 +184,64 @@ summary(model1)
 plot(model1,which =c(1,2))#create a residual plot and Q-Q plot.
 
 ```
-*From this simple linear regression, most of the predictoirs are significant. From the summary of the model we notice that the preditcor bedrooms is not significant to price,We may want to eliminate those predictors in the multilevel models.Also the R-square in the model is 0.613, So the model is not well fitted. However, in the residual plot, there are some points having big residual: 1674,3252. Those might be the prices are very high that lead to big residuals.The rest of points are symmetrically distributed around the line h = 0. In the QQ plot, we can see most dots in the middle falls on the line. However, the data have more extreme values on the tail of the distribution.Now let's expand simple linear model to multilevel linear model.*
+
+*From this simple linear regression,from the results we can see most of the predictoirs are significant. The preditcor bedrooms is not significant to price,We may want to eliminate those predictors in the multilevel models. The R-square in the model is 0.6137, So the model is not well fitted. However, in the residual plot, there are some points having big residual: 1674,3252. Those might be the prices are very high that lead to big residuals.The rest of points are symmetrically distributed around the line h = 0. In the QQ plot, we can see in the middle most dots  falls on the line. However, the data have more extreme values on the tail of the distribution.Now let's expand simple linear model to multilevel linear model.*
 
 ## Model2: Multilevel linear model with random intercept: 
 
 $$log(price) =  \alpha_{i} + \beta_1 x_{roomtype} +\beta_2 x_{reviews}+\beta_3 x_{overall satisfaction}  +\beta_4x_{accommodates*bedrooms} + \beta_5 x_{accommodates}$$
-```{r echo=FALSE}
+```{r echo=FALSE,include=FALSE}
 model2 = lmer(log(price) ~ room_type +reviews+ overall_satisfaction + accommodates  +accommodates*bedrooms+ (1|neighborhood)-1, data = df)
-display(model2)
+summary(model2)
 confint(model2)
 ```
-*This model gets rid of non-significant terms bedrooms.The facotor of room type plays the most important part in the model. The coeifficent of reviews is zero so we dont need to keep it for the next model. Besides, the overall satisfaction is the second influential term in this model*
 
-\newpage
 
-## Model3 :  Multilevel linear model with random slope: 
+
+## Model3 :  Multilevel linear model with random slope:
+
 $$log(price) =  \alpha_{i} + \beta_1 x_{roomtype} ++\beta_{2[i]} x_{overall satisfaction}  +\beta_3x_{accommodates*bedrooms} + \beta_4 x_{accommodates}$$
-```{r echo=FALSE}
+```{r echo=FALSE, include=FALSE}
 model3 = lmer(logprice ~ room_type + overall_satisfaction + accommodates +accommodates*bedrooms + (0+ overall_satisfaction|neighborhood)-1, data = df)
-display(model3)
+summary(model3)
 confint(model3)
 ```
-*This is a multilevel linear model with random slope.From the confidence interval we can see all the predictors are significant.*
 
-\newpage
 
-## model4 :  Multilevel linear model with random slope and random intercept:
+## Model4 :  Multilevel linear model with random slope and random intercept:
+
 $$log(price) =  \alpha_{i}+\beta_1 x_{roomtype} +\beta_{2[i]} x_{overall satisfaction}  +\beta_3x_{accommodates*bedrooms} + \beta_4 x_{accommodates} $$
 
 ```{r echo=FALSE}
 model4 = lmer(logprice ~ room_type+ overall_satisfaction + accommodates +accommodates*bedrooms + (1 + overall_satisfaction|neighborhood)-1, data = df)
-display(model4)
+summary(model4)
 confint(model4)
 ```
-*This is the model is based on model2 and model3 with random slope as well random intercept. According to the confidence interval and coeiffient, all the predictors are significant.* 
+
+*This is the model is based on model2 and model3 with random slope as well random intercept. According to the output from this model, we can interpret coeiffients as the average log.price of entire home/apt is 2.95, the confidence interval did not cross zero which mean the predictors is significant to our result. And for the coefficent of the overall satisfaction can be understand as for each Airbnb the rating of increase by 1, the log price of this Airbnb will increase 0.36, although the range of the rating is not very big according the previous plot(figure.6), we still consider this predictors significant snice it also contain the confidence interval that not cross zero* 
 
 # V. Result: 
 
 *Since we have 3 multilevel models with similar structures, we want to run ANOVA test to test whether there's any difference among the models and which model has best goodness of fit.*
+
 ```{r echo=FALSE}
-anova(model2, model3, model4, refit = FALSE) #anova test.
+anova(model2, model3, model4, refit = FALSE)
 plot(fitted(model4),resid(model4,type="pearson"),col="pink", main = "Figure 9. residual plot for model4")
 abline(h =0)
 coef = coef(model4)$"neighborhood"
-
+#coef
 max(coef$`(Intercept)`)
 
 ```
-*According to the output of the test, we can see that model 4 with random intercept and random slope is the best fit among three multilevel models. It has lowest deviance with 583.33. The second plot is a residual plot form model 4. As we can see the plot the points are symmetrically distributed around the line h = 0. The neighborhood with the maximum intercept is Parkside with intercept 2.816*
 
-*From the analysis above we found the best model among is the Model4:*
-
- $$log(price) =  \alpha_{i}+\beta_1 x_{roomtype} +\beta_{2[i]} x_{overall satisfaction}  +\beta_3x_{accommodates*bedrooms} + \beta_4 x_{accommodates}$$
- 
-*From the model,we can found that the most influential term is the factor of room type. The second influential term is the district of neighborhood. Also, more  higher overall satisfaction will lead to a higher price. The ideas of building these model is to predicting models by different levels of neighborhood. The model in each level will have a unique intercept and a unique slope for the predictor overall satisfaction. In this way it will lead the last model minimize the deviance comparing to the previous two multilevel linear model.*
+*According to the output of the test, we can see that model 4 with random intercept and random slope is the best fit among three multilevel models. It has lowest deviance with 583.33. The second plot is a residual plot form model 4. As we can see the plot the points are symmetrically distributed around the line h = 0. The neighborhood with the maximum intercept is Parkside with intercept 2.816. From the analysis above we found the best model among is the Model4. From the model,we can found that the most significant predictor is the factor of room type. The second significant predictors is the district of neighborhood. Also, higher overall satisfaction will lead to a higher price. The ideas of building these model is to predicting models by different levels of neighborhood. The model in each level will have a unique intercept and a unique slope for the predictor overall satisfaction, in this way it will lead the last model minimize the deviance comparing to the previous two multilevel linear model.*
 
 
 # VI. Discussion: 
 
-The result terms out to be not very suprirsing, although I though the reviews would so how affect the price of Airbnb in San Francisco. The reality here is that the factor of room type will be determine the price the most, which is reasonable because from what my knowledge, San Francisco is one of the most expensive living enviornment in the U.S. especially the bay area has the highest housing price. Therefore it is a place the every inch is like the price as gold. The room type of Airbnb is more like the different room size for the hotel. The entire home/apt tends to serve more people and have bigger space at one time. So the price of entire home/apt should be higher than the other two room type. Also, the second term neighborhood is obvious to be significant. This is because based on the living environment in San Francisco there are many tech company and university in the city, as well as the neighborhood around union square, twin peak is close to downtown area and there are many sight-seeing spots for tourists. We can conclude that our findings are reasonable. 
+The result terms out to be not very surprirsing, although I though the reviews would so how affect the price of Airbnb in San Francisco. The reality here is that the factor of room type will be determine the price the most, which is reasonable because from what my knowledge, San Francisco is one of the most expensive living environment in the U.S. especially the bay area has the highest housing price. Therefore it is a place the every inch is like the price as gold. The room type of Airbnb is more like the different room size for the hotel. The entire home/apt tends to serve more people and have bigger space at one time. So the price of entire home/apt should be higher than the other two room type. Also, the second term neighborhood is obvious to be significant. This is because based on the living environment in San Francisco there are many tech company and university in the city, as well as the neighborhood around union square, twin peak is close to downtown area and there are many sight-seeing spots for tourists. We can conclude that our findings are reasonable. 
 
-However, this analysis is denfinitely not perfect. There are only 4 predictors in the multilevel model. Those predictors are the most significant variables we found in the dataset. This is just a very basic analysis of the Airbnb data, there are many other factors that can take in to account, such as theacademic institution in the neighborhood or the transportation condition, and also the geographic difference in each countries will be interesting to explore in the future. That maybe the future direction of this project.*
+However, this analysis is definitely not perfect. There are only 4 predictors in the multilevel model. Those predictors are the most significant variables we found in the dataset. This is just a very basic analysis of the Airbnb data, there are many other factors that can take in to account, such as the academic institution in the neighborhood or the transportation condition, and also the geographic difference in countries will be interesting to explore in the future. That maybe the future direction of this project.
 
 
 # VII.Reference 
@@ -234,14 +254,28 @@ https://www.airbnb.com/
 
 # VIII. Appendix 
 
+## Output and residual plot for model 2
 
 ```{r echo=FALSE}
-
+model2 = lmer(log(price) ~ room_type +reviews+ overall_satisfaction + accommodates  +accommodates*bedrooms+ (1|neighborhood)-1, data = df)
+summary(model2)
+confint(model2)
 plot(fitted(model2),resid(model2,type="pearson"),col="pink", main = "residual plot for model2")
 abline(h =0)
+```
+
+*In our second model, we gets rid of non-significant terms bedrooms.The factor of room type plays the most important part in the model. The coefficent of reviews is zero so we don't need to keep it for the next model. Besides, the overall satisfaction is the second influential term in this model other than the room type.*
+
+## Output and residual plot for model 3
+
+```{r echo=FALSE}
+model3 = lmer(logprice ~ room_type + overall_satisfaction + accommodates +accommodates*bedrooms + (0+ overall_satisfaction|neighborhood)-1, data = df)
+summary(model3)
+confint(model3)
+
 plot(fitted(model3),resid(model3,type="pearson"),col="pink", main = "residual plot for model3")
 abline(h =0)
 ```
 
-Residual for model 2&3
+
 
