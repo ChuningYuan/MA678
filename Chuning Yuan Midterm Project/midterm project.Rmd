@@ -7,16 +7,18 @@ output: pdf_document
 
 # I.Introduction 
 
-Nowadays, Airbnb has became very popular for the travelers due to its unique style and creative design and competitive prices and location than the hotels. Therefore I think it will be interesting to explore the data set of Airbnb, we can look at how are the price for a night stay for each room were affected by other variables such as reviews, number of bedrooms, minimum stays etc.This project will contain analysis on Airbnb data with EDA(Exploratory Data Analysis) and modeling. From this project,we will be able to have a general idea how to predict the price of rooms on Airbnb website and what’s the most influential factor in predicting process.
+Nowadays, Airbnb has become very popular for the traveler’s due to its unique style and creative design and competitive prices and location than the hotels. Therefore, I think it will be interesting to explore the data set of Airbnb, we can look at how are the price for a night stay for each room were affected by other variables such as reviews, number of bedrooms, minimum stays etc. This project will contain analysis on Airbnb data with EDA (Exploratory Data Analysis) and modeling. From this project, we will be able to have a general idea how to predict the price of rooms on Airbnb website and what’s the most influential factor in predicting process.
 
-Airbnb is a privately held global company headquartered in San Francisco that operates an online marketplace and hospitality service which is accessible via its websites and mobile apps. Members can us the service to arrange or offer lodging, primarily homestays, or tourism experiences. I choose the data of San Francisco is also because it is where Airbnb has grown around the world from, and I have the experience of searching Airbnb in bay area. First, I will read in the data and do some visualization to see which predictor will contributes more to the prediction of price. And then the modeling will be multi-level regression using room type and neighborhood  and few other factors to predict the price.
+
+According to the officially website Airbnb is a privately held global company, the headquarter is located in San Francisco, it operates an online marketplace and hospitality service can be accessible through websites and mobile apps. People can use the service to arrange or provide lodging, homestays, or tourism experiences. I choose the data of San Francisco is also because it is where Airbnb has grown around the world from, and I have the experience of searching Airbnb in bay area. First, I will read in the data and do some visualization to see which predictor will contributes more to the prediction of price. And then the modeling will be multi-level regression using room type and neighborhood and few other factors to predict the price.
+
 
 ```{r setup, include=FALSE,echo=FALSE,warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 pacman::p_load(ggplot2,tidyverse,stringr,kableExtra,dplyr,sqldf,ggpubr,coefplot,lme4,arm)
 ```
 
-```{r echo=FALSE,include=FALSE}
+```{r echo=FALSE,include=FALSE,warning=FALSE}
 files = list.files(pattern = ".csv")
 files = files[which(str_detect(files,pattern = "2017"))]
 c = setNames(files,paste0("sanf",1:length(files)))
@@ -35,15 +37,18 @@ for(i in 2:length(files)){
 
 ## Data source
 
-The data set was extracted from the tomslee.net website-- Airbnb Data Collection: Get the Data. There are zip file for many cities around the world. The zip file holds one or more csv files. Each csv file represents a single “survey” or “scrape” of the Airbnb web site for that city. 
-
-Specifically, the data used for this project was collected from the November 2013 to January 2017 in San Francisco. There are 9 variables that will be used in this project. Specifically, they are room id, host id, room type, neighborhood, number of reviews, overall satisfaction, number of accommodates, number of bedrooms and price.We are assuming the potential factors to influence the pricing are the room type, neighborhood, number of reviews, overall satisfaction, number of accommodates and number of bedrooms.
+The data set was extracted from the tomslee.net website: Airbnb Data Collection, under the section get the data. There is zip file for many cities around the world. The zip file holds one or more csv files. Each csv file represents a single “survey” or “scrape” of the Airbnb web site for that city. To be specific, the data used for this project was collected from the November 2013 to January 2017 in San Francisco. There are 9 variables that will be used in this project. They are room id, host id, room type, neighborhood, number of reviews, overall satisfaction, number of accommodates, number of bedrooms and price. We are assuming the potential factors to influence the pricing are the room type, neighborhood, number of reviews, overall satisfaction, number of accommodates and number of bedrooms.
  
 ## Data Cleaning 
 
-For a large dataset, we want to extract the information as more useful and informative as possible, so we filter the observation with more than 100 reviews because these could be more representative in general, and extract neighborhood with more than 30 observations for the further modeling analysis. Below is the data overview after the cleaning processes.
 
-```{r echo=FALSE}
+## Overview of data
+
+
+### Table 1. Summary of the data:
+
+```{r warning=FALSE}
+summary(sanf)
 # filter observations with more than 100 reviews 
 sanf.re = sanf %>% filter(reviews > 100)
 # count the observations in each neighborhood
@@ -54,28 +59,19 @@ sanf.re = sanf.re[which(sanf.re$neighborhood %in% count.nerbor$neighborhood),]
 # export dataset to CSV file
 write.csv(sanf.re,"san_francisco_data_final.csv")
 data = read.csv("san_francisco_data_final.csv")
-
-```
-
-## Overview of data
-
-### Table 1. The head of the data:
-
-```{r echo=FALSE}
-
-kable(head(data[,c(2:4,6:8,11)]))
-```
-
-
-### Table 2. Summary of the data:
-
-```{r echo=FALSE}
 Airbnb = data[,c(2:12)]
-summary(Airbnb)
 #eliminate all the NA value.
 SFAirbnb = subset(Airbnb, select = -c(borough,minstay))
 ```
-*According to the summary we can delete the the column borough and minstay because there is no value in them. After eliminate all the NA, now we have the cleaned data we need, then we can start our EDA process.*
+
+Because the dataset is very large, we want to extract the information as more useful and informative as possible, so we filter the observation with more than 100 reviews because these could be more representative in general, and extract neighborhood with more than 30 observations for the further modeling analysis. Below is the data overview after the cleaning processes.According to the summary we can delete the the column borough and minstay because there is no value in them. After eliminate all the NA, now we have the cleaned data we need, then we can start our EDA process.
+
+
+### Table 2. The head of the data:
+
+```{r echo=FALSE}
+kable(head(data[,c(2:4,6:8,11)]))
+```
 
 # III. EDA 
 
@@ -146,7 +142,7 @@ ggplot(data=neighborhood, aes(x=reorder(neighborhood,-Avg_price), y= Avg_price))
 
 ## How are the number of reviews, price and rating different in each neighborhood?
 
-*From this plot, the Potrero Hill area has the highest number of review (over 200), while Excelsior has the lowest average number of reviews beside those less than 100 reviews. We can observe that the average number of review do vary a lot by neighborhood. Although there is not much  diffence of rating among different neighborhood, still the neighborhood of the Airbnb room could be an influence predictor based on figure 6. We need to include this predictor in the model to see whether rating is a significant for predicting price of rooms.*
+*From this plot, the Potrero Hill area has the highest number of review (over 200), while Excelsior has the lowest average number of reviews beside those less than 100 reviews. We can observe that the average number of review do vary a lot by neighborhood. Although there is not much  differnce of rating among different neighborhood, still the neighborhood of the Airbnb room could be an influence predictor based on figure 6. We need to include this predictor in the model to see whether rating is a significant for predicting price of rooms.*
 
 
 ```{r echo=FALSE}
@@ -163,14 +159,13 @@ ggplot(data = room_type, aes(x= reorder(room_type,-Avg_price),y = Avg_price,fill
 ## Testing other predictors
 
 
-*The accommodates and bedrooms could be two correlated terms in the model, because the number of bedroom will limit the number of customers served. So the correlation test will be conducted in next step.*
-
 ```{r echo=FALSE}
 res <- cor.test(SFAirbnb$accommodates, SFAirbnb$bedrooms, 
                     method = "pearson")
 res
 ```
-*The accommodates and bedrooms could be two correlated terms in the model, because the number of bedroom is related to the number of customers served for the room. So we can do a correlation test for this two predictors. The p-value of this test is 2.2e-16. Reject the null hypothesis. So correlation between the those two variables is significant.Therefore we can  add the correlation term into the model to test whether this influence term is significant.*
+
+*Considering the bedrooms and the accommodates could be two correlated predictors, because the number of bedroom set up the maximum number of customers that can be stay in. So we use a correlation test for the next step. The p-value of this test is 2.2e-16. Reject the null hypothesis. So correlation between the those two variables is significant. Therefore we can add the correlation term into the model to test whether this influence term is significant.*
 
 # IV. Modelling: 
 
@@ -185,7 +180,7 @@ plot(model1,which =c(1,2))#create a residual plot and Q-Q plot.
 
 ```
 
-*From this simple linear regression,from the results we can see most of the predictoirs are significant. The preditcor bedrooms is not significant to price,We may want to eliminate those predictors in the multilevel models. The R-square in the model is 0.6137, So the model is not well fitted. However, in the residual plot, there are some points having big residual: 1674,3252. Those might be the prices are very high that lead to big residuals.The rest of points are symmetrically distributed around the line h = 0. In the QQ plot, we can see in the middle most dots  falls on the line. However, the data have more extreme values on the tail of the distribution.Now let's expand simple linear model to multilevel linear model.*
+*From this simple linear regression,from the results we can see most of the predictoirs are significant. The preditcor bedrooms is not significant to price, we may want to eliminate those predictors in the multilevel models. The R-square in the model is 0.6137 which means the model dose not fit very good. However, in the residual plot, there are some points have big residual: 1674,3252. Those might be some extrem values of prices that lead to big residuals.The rest of points are symmetrically distributed around the line h = 0. In the QQ plot, we can see in the middle most dots falls on the line. However, the data have more extreme values on the tail of the distribution. Next step we expand simple linear model to multilevel linear model.*
 
 ## Model2: Multilevel linear model with random intercept: 
 
@@ -212,7 +207,7 @@ confint(model3)
 
 $$log(price) =  \alpha_{i}+\beta_1 x_{roomtype} +\beta_{2[i]} x_{overall satisfaction}  +\beta_3x_{accommodates*bedrooms} + \beta_4 x_{accommodates} $$
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 model4 = lmer(logprice ~ room_type+ overall_satisfaction + accommodates +accommodates*bedrooms + (1 + overall_satisfaction|neighborhood)-1, data = df)
 summary(model4)
 confint(model4)
@@ -241,7 +236,7 @@ max(coef$`(Intercept)`)
 
 The result terms out to be not very surprirsing, although I though the reviews would so how affect the price of Airbnb in San Francisco. The reality here is that the factor of room type will be determine the price the most, which is reasonable because from what my knowledge, San Francisco is one of the most expensive living environment in the U.S. especially the bay area has the highest housing price. Therefore it is a place the every inch is like the price as gold. The room type of Airbnb is more like the different room size for the hotel. The entire home/apt tends to serve more people and have bigger space at one time. So the price of entire home/apt should be higher than the other two room type. Also, the second term neighborhood is obvious to be significant. This is because based on the living environment in San Francisco there are many tech company and university in the city, as well as the neighborhood around union square, twin peak is close to downtown area and there are many sight-seeing spots for tourists. We can conclude that our findings are reasonable. 
 
-However, this analysis is definitely not perfect. There are only 4 predictors in the multilevel model. Those predictors are the most significant variables we found in the dataset. This is just a very basic analysis of the Airbnb data, there are many other factors that can take in to account, such as the academic institution in the neighborhood or the transportation condition, and also the geographic difference in countries will be interesting to explore in the future. That maybe the future direction of this project.
+However, this analysis is definitely not perfect. There are only 4 predictors in the multilevel model. Those predictors are the most significant variables we found in the dataset. This is just a very basic analysis of the Airbnb data, there are many other factors that can take in to account, such as the academic institution in the neighborhood or the transportation condition, and also the geographic difference in countries will be interesting to explore in the future. That wil be the future direction of this project.
 
 
 # VII.Reference 
