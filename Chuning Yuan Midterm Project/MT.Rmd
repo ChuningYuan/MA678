@@ -1,0 +1,233 @@
+---
+title: "Midterm Project Report"
+author: "Chuning Yuan"
+output:
+  pdf_document
+---
+
+```{r setup, include=FALSE,echo=FALSE}
+knitr::opts_chunk$set(echo = F,fig.align="c",dpi = 500,fig.height=5 ,warning = F, message = F,dev = "pdf")
+pacman::p_load(tidyverse,arm,AER,corrplot,lme4,lattice,ggplot,dplyr)
+```
+
+# I.Introduction
+
+\qquad The main goal of this project is to find a dataset, and propose an analysis that includes fitting a multilevel model. Based on the goal, the deliverable consisted two parts. First, through Exploratory Data Analysis, I can have an overview of this data set, and visualize the relationships between the different variables. Then we use the outcomes to determine which factors should be included in the analysis model. Second, we used models to conduct an analysis.
+
+# II.Data
+
+\qquad The data for this project are extract from the dataset in R -- Fair's Extramarital Affairs Data, it is a Cross-section data from a survey conducted by Psychology Today in 1969. The data frame containing 601 observations on 9 variables. Below is the data description in detail:
+
+*affairs*(numeric): How often engaged in extramarital sexual intercourse during the past year? 0 = none, 1 = once, 2 = twice, 3 = 3 times, 7 = 4–10 times, 12 = monthly, 12 = weekly, 12 = daily. \par
+
+*gender*(factor): male or female.\par
+*age*(numeric): numeric variable coding age in years: 17.5 = under 20, 22 = 20–24, 27 = 25–29, 32 = 30–34, 37 = 35–39, 42 = 40–44, 47 = 45–49, 52 = 50–54, 57 = 55 or over. \par
+*yearsmarried*(numeric): numeric variable coding number of years married: 0.125 = 3 months or less, 0.417 = 4–6 months, 0.75 = 6 months–1 year, 1.5 = 1–2 years, 4 = 3–5 years, 7 = 6–8 years, 10 = 9–11 years, 15 = 12 or more years.\par
+*children*(factor): are there children in the marriage?\par
+*religiousness*: numeric variable coding religiousness: 1 = anti, 2 = not at all, 3 = slightly, 4 = somewhat, 5 = very.\par
+*education*: numeric variable coding level of education: 9 = grade school, 12 = high school graduate, 14 = some college, 16 = college graduate, 17 = some graduate work, 18 = master's degree, 20 = Ph.D., M.D., or other advanced degree.\par
+*occupation*: numeric variable coding occupation according to Hollingshead classification (reverse numbering).\par
+*rating*: numeric variable coding self-rating of marriage: 1 = very unhappy, 2 = somewhat unhappy, 3 = average, 4 = happier than average, 5 = very happy.\par
+
+\newpage
+
+# III. EDA
+
+```{r include=F}
+data("Affairs")
+```
+
+## 1.What is the distributions of the number of affairs?
+
+```{r}
+ggplot(Affairs, aes(affairs))+ geom_histogram(binwidth = 1, color = "black", fill = "pink")+ 
+ggtitle("Figure 1. Distribution of affairs")
+```
+
+\qquad First, we can plot to see the visualization for the variable *affairs*, which is the variable we consider as the outcome for the model. The scale of this variables is discrete integer. From Figure 1, we can see that the number of affairs can take only six non-continuous values, which due to the design of the survey. According to the data description, when the actually number of affairs is between 4 and 12, it will be recorded as 7, when it is greater than 12, it will be recorded as 12.
+
+## 2. Distributions of number of affairs by gender
+
+```{r}
+
+ggplot(Affairs, aes(affairs))+ geom_histogram(binwidth = 1, color = "black", fill = "pink")+ 
+ggtitle("Figure 2. Distribution of affairs by gender") + theme_gray()+
+facet_grid(~gender)#+ scale_y_continuous(labels=percent)
+```
+
+\qquad Then we want to check some other predictors will affect the number of affairs. Figure 2 shows the number of affairs distributed by the difference between male and female. From the plot, we can tell that there is not much difference. Therefore, it suggests that we don’t need to take into account the difference of gender.
+ 
+
+## Distribution of number of affairs by age
+
+```{r}
+Affair = Affairs %>% filter(affairs >0)
+ggplot(Affair, aes(affairs))+ geom_histogram(binwidth = 1, color = "black", fill = "pink")+ 
+ggtitle("Figure 4. Distribution of affairs by age") + theme_gray()+
+facet_grid(~age)+theme(axis.text.x = element_text(angle = 90,hjust = 1))
+```
+
+\qquad We may suspect that the number of affairs of people in different age group are correlated, below is the histagram of number of affairs between different age group. In each age group, most of the number of affairs are 0, so we filtered those observations and make sure that we can see the difference between each age groups. From Figure 4. we can observe that the younger the age of the person, the higher the number of affairs this person might conduct.
+
+## 4. How are the variable correlated with each other?
+
+```{r}
+data <- model.matrix(~ affairs+gender+age+yearsmarried+children+religiousness+education+occupation+rating-1, data = Affairs) %>% data.frame()%>%dplyr::select(-genderfemale)
+cor = cor(data,method = "spearman")
+title <- "Figure.5 "
+corrplot::corrplot(cor,type = "upper",diag = F,title=title)
+```
+
+\qquad Figure 5. is the correlation plot of all variables, we can observe that number of affairs are not highly correlated with other variables. There are some variables are highly correlated, which can be explained by social context, for example the correlation between gender, education and occupation can be explained by gender discrimination, since the survey was conducted in 1960s. The age and years married of a person are strongly correlated is also very reasonable.  
+
+
+\newpage
+
+# IV. Modeling analysis
+
+## 1. Logistic Model
+
+First, we want to know the possibility of a person  choosing to have affairs, we consider Logistic Model. According to the correlation plot Figure 4., we choose age, yearmarried, children, religiousness and ratings, below is the result of Logistic Model:
+
+```{r}
+data[sapply(data, is.numeric)] <- lapply(data[sapply(data, is.numeric)], as.factor)
+
+glm.fits = glm(data = data, formula = affairs ~ age+yearsmarried+childrenyes+religiousness+rating,family = binomial())
+summary(glm.fits)
+```
+
+\qquad The result shows that the predictors age, religiousness and ratings are significant, they can affect the possibility of one having affairs. Then we do the model checking:  
+
+```{r}
+par(mfrow=c(1,2))
+plot(fitted(glm.fits),resid(glm.fits)); abline(h=0,lty=3)
+arm::binnedplot(fitted(glm.fits),resid(glm.fits,type="response"))
+```
+
+\qquad  We choose to look at Binned residual plot, we can see all the residuals are distributed around 0, and all of them are inside of the boundry, which suggests our model fits well.  
+
+```{r fig.align='center',out.width='80%'}
+arm::coefplot(glm.fits)
+```
+
+\qquad From the Logist model we can know that:  
+
++ People who do not have religiousness are more likely to have affairs;
++ People who feel more happy about their marriage, are less likely to have affairs;
++ Having a children in the marriage will increase the probability of having affairs.
+\newpage
+
+## 2. Simple Linear Regression
+
+\qquad After we know which factors are significant to the possibility of having an affair, we want to know how these factors will affect the exact numbers of affairs. We use simple linear regression in our next step, and also we get rid of the variables that are not statistically significant in previous model, below is the result:  
+
+```{r include=FALSE}
+data <- model.matrix(~ affairs+gender+age+yearsmarried+children+religiousness+education+occupation+rating-1, data = Affairs) %>% data.frame()%>%dplyr::select(-genderfemale)
+data[sapply(data, is.numeric)] <- lapply(data[sapply(data, is.numeric)], as.factor)
+data = data %>% mutate(affairs = as.numeric(affairs))
+mo.s = glm(data = data, formula = affairs ~ age+religiousness+rating ,family = gaussian())
+```
+
+```{r}
+summary(mo.s)
+```
+
+\qquad The result shows very similar result that the variable age, religiousness and the rating of the marrige are significant to the numbers of affairs. In general, the older of a person's age, the higher of a person's religious belif and the happier of a person feel about the marriage, will lead to lower number of the affairs he or she wil have. Then we do the model checking:   
+
+```{r}
+plot(fitted(mo.s),resid(mo.s)); abline(h=0,lty=2)
+```
+
+\qquad From residuals plot, we can see a clear pattern which is introduced by the categorical response variable. This suggests that we may choose another model, so we choose Poisson for the next step of the analysis, the reason is that the variables *affairs* is a counting of number of affairs. 
+
+\newpage
+
+
+## 3. Poisson Regression
+
+```{r include=FALSE}
+data <- model.matrix(~ affairs+gender+age+yearsmarried+children+religiousness+education+occupation+rating-1, data = Affairs) %>% data.frame()%>%dplyr::select(-genderfemale)
+data[sapply(data, is.numeric)] <- lapply(data[sapply(data, is.numeric)], as.factor)
+data = data %>% mutate(affairs = as.numeric(affairs))
+mo.p = glm(data = data, formula = affairs ~ age+religiousness+rating ,family = poisson())
+```
+
+```{r}
+summary(mo.p)
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(fitted(mo.p),resid(mo.p)); abline(h=0,lty=3)
+arm::binnedplot(fitted(mo.p),resid(mo.p,type="response"))
+```
+
+\qquad For the model check we use binned residuals plot, and the residuals are located between intervals, fluctuating around 0. The binned residuals show the interval for the estimated coefficients, which is better compared to previous model.This time we have smaller variance for each coefficients, which means the estimation is more precise. We can still draw similar conclusion about the number of affairs, for detailed interpretation:  
+
++ The average number of affairs for people who don't have religious belief will be 36.43% lower than people who are anti-religious;
++ The average number of affairs for people who slightly have religious belief will be 26.78% lower than people who are anti-religious;
++ The average number of affairs for people who have very strong religious belief will be 58.97% lower than people who are anti-religious;  
++ People who are somewhat unhappy about their marriage will have average number of affairs that is 3.07% lower than those who are unhappy about their marriage;
++ People who are very happy about their marriage will have average number of affairs that is 67.47% lower than those who are unhappy about their marriage.
+
+
+
+## 4. Mixed-effect Poisson Regression
+
+Now we consider to build a mixed-effect model, we build the model with random intercepts, ramdom slope and with respect to both religiousness and rating.
+```{r echo=FALSE}
+data <- model.matrix(~ affairs+gender+age+yearsmarried+children+religiousness+education+occupation+rating-1, data = Affairs) %>% data.frame()%>%dplyr::select(-genderfemale)
+data[sapply(data, is.numeric)] <- lapply(data[sapply(data, is.numeric)], as.factor)
+data = data %>% mutate(affairs = as.numeric(affairs))
+ml.fit1 = glmer(data = data, formula = affairs ~ religiousness+rating+(1|age) ,family = poisson())
+ml.fit2 = glmer(data = data, formula = affairs ~ religiousness+rating+(rating -1|age) ,family = poisson())
+ml.fit3 = glmer(data = data, formula = affairs ~ religiousness+rating+(1 + rating|age) ,family = poisson())
+ml.fit4 = glmer(data = data, formula = affairs ~ religiousness+rating+(religiousness -1|age) ,family = poisson())
+ml.fit5 = glmer(data = data, formula = affairs ~ religiousness+rating+(1 + religiousness|age) ,family = poisson())
+ml.fit6 = glmer(data = data, formula = affairs ~ religiousness+rating+(1 + religiousness+ rating|age) ,family = poisson())
+```
+```{r}
+anova(ml.fit1,ml.fit2,ml.fit3,ml.fit4,ml.fit5,ml.fit6)
+```
+fit1: grouped age as radom effect intercept.\par
+fit2: random slope of rating grouping by age.\par
+fit3: random slope and intercept for rating grouped by age.\par
+fit4&5: same as fit2&3 with respect to religiouness.\par
+fit6: ramdom slope and intercept for rating and religiousness grouped by age.\par
+
+\qquad We can select model from the result, we see that as the model getting complex, both the test result of AIC and BIC increase steady, which means complex model do not perform better than simple model that only contains random intercept, so we choose the model with only random intercepts.  
+
+\qquad Model check fit1 :  
+
+```{r warning=FALSE}
+arm::binnedplot(fitted(ml.fit1),resid(ml.fit1,type="response"))
+```
+
+\qquad Still we can see that most residuals are located within interval and around 0.  
+
+
+
+# V.Discussion
+
+\qquad We went through *Logistic Model*, *Simple Linear Model*, *Poisson Model* and *Mixed-effect Poisson Regression*, as we kept modify our model to reflect more features of the data set, we got better result. We find that *attitude towards religions* and *ratings about marriage* are two key factors that will affect the behavior of having affairs in the marriage. The limitation of the model is that the number of affairs is a categorical varibles due to the design of the survey, but we put it into a Possion regression model, this may somehow affact the result of our model.Therefore, the future work of this project would be finding more data that contains non-categorical variables for the number of affairs record and maybe more predictors affacted the extramarital affairs such as the type of marriage(heterosexual or homosexual) of the times of the marriage of a person(1st,2nd,etc). 
+  
+# VI. Reference
+
+Greene, W.H. (2003).*Econometric Analysis*, 5th edition. Upper Saddle River, NJ: Prentice Hall.
+
+Fair, R.C. (1978). A Theory of Extramarital Affairs.*Journal of Political Economy*,86, 45–61.
+
+
+
+# VI. Appendix
+
+```{r fig.height= 3}
+y = ifelse(Affairs$affairs== 0, 0, 1)
+data = data %>% mutate(affairs = y)
+ggplot(data) + geom_jitter(aes(x = factor(affairs),y = factor(gendermale),color = factor(gendermale)),alpha = 0.8) + xlab("Affairs") + ylab("Male") + theme(legend.position = "")
+```
+
+\qquad We want to plot the possibility of one choosing to have affairs. Above plot is a scatter plot that we can see for both male and female, the possibility are similar, it is hard to tell the difference between gender in the plot.
+
+
+
